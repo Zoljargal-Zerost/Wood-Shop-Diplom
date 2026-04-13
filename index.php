@@ -1,6 +1,34 @@
 <?php
 session_start();
-$user = $_SESSION['user'] ?? null;
+$user    = $_SESSION['user'] ?? null;
+$isAdmin = $user && in_array($_SESSION['user_role']['slug'] ?? '', ['admin','manager']);
+
+// DB холболт
+try {
+    $pdo = new PDO('mysql:host=localhost;dbname=modni_zah;charset=utf8mb4', 'root', '', [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
+} catch (PDOException $e) { $pdo = null; }
+
+// Бүтээгдэхүүн DB-с татах (admin нуугдсаныг ч харна)
+$products = [];
+if ($pdo) {
+    $sql = $isAdmin
+        ? 'SELECT * FROM products ORDER BY sort_order ASC, id ASC'
+        : 'SELECT * FROM products WHERE is_active=1 ORDER BY sort_order ASC, id ASC';
+    try { $products = $pdo->query($sql)->fetchAll(); } catch(Exception $e) {}
+}
+
+// Orders (profile modal)
+$myOrders = [];
+if ($user && $pdo) {
+    try {
+        $st = $pdo->prepare('SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC');
+        $st->execute([$user['id']]);
+        $myOrders = $st->fetchAll();
+    } catch(Exception $e) {}
+}
 ?>
 <!DOCTYPE html>
 <html lang="mn">
@@ -53,11 +81,11 @@ $user = $_SESSION['user'] ?? null;
 
     <div class="nav-actions">
       <?php if ($user): ?>
-        <a href="dashboard.php" class="btn-user">
+        <a href="/Wood-shop/dashboard/" class="btn-user">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
           <?= htmlspecialchars($user['ner']) ?>
         </a>
-        <a href="auth.php?action=logout" class="btn-outline-sm">Гарах</a>
+        <a href="/Wood-shop/auth.php?action=logout" class="btn-outline-sm">Гарах</a>
       <?php else: ?>
         <button class="btn-outline-sm" onclick="openModal('login-modal')">Нэвтрэх</button>
         <button class="btn-primary-sm" onclick="openModal('register-modal')">Бүртгүүлэх</button>
@@ -122,6 +150,15 @@ $user = $_SESSION['user'] ?? null;
       <p class="section-desc">Өндөр чанарын мод, модон материалыг захиалаарай</p>
     </div>
 
+    <?php if ($isAdmin): ?>
+    <!-- Admin toolbar — зөвхөн admin харна -->
+    <div class="admin-toolbar">
+      <span class="admin-toolbar-badge">⚙️ Админ горим — бүтээгдэхүүн засварлах</span>
+      <button class="admin-add-btn" onclick="openModal('product-add-modal')">➕ Шинэ бүтээгдэхүүн нэмэх</button>
+      <a href="/Wood-shop/dashboard/admin.php?tab=products" class="admin-dash-link">Dashboard →</a>
+    </div>
+    <?php endif; ?>
+
     <!-- Filter -->
     <div class="filter-bar">
       <button class="filter-btn active" data-filter="all">Бүгд</button>
@@ -132,105 +169,91 @@ $user = $_SESSION['user'] ?? null;
       <button class="filter-btn" data-filter="tulsh">Түлш</button>
     </div>
 
-    <!-- Products -->
+    <!-- Products — DB-с татсан -->
+    <?php
+    $typeLabels = [
+        'shilmuust'    => 'Шилмүүст',
+        'navchit'      => 'Навчит',
+        'hatu'         => 'Хатуу мод',
+        'bolvsuruulsan'=> 'Боловсруулсан',
+        'tulsh'        => 'Түлш',
+    ];
+    ?>
     <div class="products-grid">
+    <?php if (empty($products)): ?>
+      <p style="color:var(--text-muted);text-align:center;padding:40px;grid-column:1/-1">
+        Бүтээгдэхүүн байхгүй байна.
+        <?php if ($isAdmin): ?><br><button onclick="openModal('product-add-modal')" style="margin-top:12px" class="btn-order">➕ Нэмэх</button><?php endif; ?>
+      </p>
+    <?php else: ?>
+    <?php foreach ($products as $p):
+      $inactive = !$p['is_active'];
+    ?>
+      <article class="product-card <?= $inactive ? 'product-hidden' : '' ?>" data-type="<?= htmlspecialchars($p['type']) ?>">
 
-      <article class="product-card" data-type="shilmuust">
-        <div class="product-img">🌲</div>
+        <?php if ($isAdmin): ?>
+        <!-- Admin inline toolbar -->
+        <div class="product-admin-bar">
+          <button class="pab-btn pab-edit"
+            onclick="openProductEdit(<?= htmlspecialchars(json_encode($p)) ?>)"
+            title="Засах">✏️</button>
+          <form method="POST" action="/Wood-shop/product_action.php" style="display:inline">
+            <input type="hidden" name="act" value="toggle">
+            <input type="hidden" name="id" value="<?= $p['id'] ?>">
+            <input type="hidden" name="redirect" value="/Wood-shop/">
+            <button class="pab-btn <?= $inactive ? 'pab-show' : 'pab-hide' ?>"
+              title="<?= $inactive ? 'Идэвхжүүлэх' : 'Нуух' ?>">
+              <?= $inactive ? '👁' : '🙈' ?>
+            </button>
+          </form>
+          <form method="POST" action="/Wood-shop/product_action.php" style="display:inline"
+            onsubmit="return confirm('Устгах уу?')">
+            <input type="hidden" name="act" value="delete">
+            <input type="hidden" name="id" value="<?= $p['id'] ?>">
+            <input type="hidden" name="redirect" value="/Wood-shop/">
+            <button class="pab-btn pab-delete" title="Устгах">🗑️</button>
+          </form>
+          <?php if ($inactive): ?>
+          <span class="pab-hidden-badge">Нуугдсан</span>
+          <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <!-- Зураг эсвэл emoji -->
+        <div class="product-img">
+          <?php if ($p['image_path'] && file_exists(__DIR__ . '/' . $p['image_path'])): ?>
+            <img src="/Wood-shop/<?= htmlspecialchars($p['image_path']) ?>"
+                 alt="<?= htmlspecialchars($p['name']) ?>"
+                 style="width:100%;height:100%;object-fit:cover;border-radius:12px 12px 0 0">
+          <?php else: ?>
+            <?= htmlspecialchars($p['emoji'] ?? '🪵') ?>
+          <?php endif; ?>
+        </div>
+
         <div class="product-body">
-          <span class="product-type">Шилмүүст</span>
-          <h3 class="product-name">Нарс (Pine)</h3>
-          <p class="product-desc">Барилга, тавилга хийхэд тохиромжтой. Хүнд ачааллыг тэсвэрлэдэг.</p>
+          <span class="product-type"><?= htmlspecialchars($typeLabels[$p['type']] ?? $p['type']) ?></span>
+          <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
+          <p class="product-desc"><?= htmlspecialchars($p['description'] ?? '') ?></p>
           <div class="product-footer">
-            <span class="product-price">Үнийн санал авах</span>
+            <span class="product-price">
+              <?php if ($p['price_value']): ?>
+                <?= number_format($p['price_value'], 0, '.', ',') ?>₮
+              <?php else: ?>
+                <?= htmlspecialchars($p['price_label'] ?? 'Үнийн санал авах') ?>
+              <?php endif; ?>
+              <?php if ($p['stock'] !== null): ?>
+                <small style="display:block;color:var(--text-muted);font-size:11px">Үлдэгдэл: <?= $p['stock'] ?></small>
+              <?php endif; ?>
+            </span>
             <button class="btn-order"
-              onclick="<?= $user ? "openOrderModal('Нарс (Pine)')" : "openModal('login-modal')" ?>">
+              onclick="<?= $user ? "openOrderModal('".addslashes($p['name'])."')" : "openModal('login-modal')" ?>">
               Захиалах
             </button>
           </div>
         </div>
       </article>
-
-      <article class="product-card" data-type="navchit">
-        <div class="product-img">🍃</div>
-        <div class="product-body">
-          <span class="product-type">Навчит</span>
-          <h3 class="product-name">Хус (Birch)</h3>
-          <p class="product-desc">Гоё хээтэй, хөнгөн. Дотор засал, тавилгад хэрэглэгдэнэ.</p>
-          <div class="product-footer">
-            <span class="product-price">Үнийн санал авах</span>
-            <button class="btn-order"
-              onclick="<?= $user ? "openOrderModal('Хус (Birch)')" : "openModal('login-modal')" ?>">
-              Захиалах
-            </button>
-          </div>
-        </div>
-      </article>
-
-      <article class="product-card" data-type="hatu">
-        <div class="product-img">🪵</div>
-        <div class="product-body">
-          <span class="product-type">Хатуу мод</span>
-          <h3 class="product-name">Хар мод</h3>
-          <p class="product-desc">Удаан эдэлгээтэй, шал болон өндөр чанарын тавилгад зориулсан.</p>
-          <div class="product-footer">
-            <span class="product-price">Үнийн санал авах</span>
-            <button class="btn-order"
-              onclick="<?= $user ? "openOrderModal('Хар мод')" : "openModal('login-modal')" ?>">
-              Захиалах
-            </button>
-          </div>
-        </div>
-      </article>
-
-      <article class="product-card" data-type="shilmuust">
-        <div class="product-img">🌿</div>
-        <div class="product-body">
-          <span class="product-type">Шилмүүст</span>
-          <h3 class="product-name">Хуш (Cedar)</h3>
-          <p class="product-desc">Үнэртэй, хорхойд тэсвэртэй. Шүүгээ, гардероб хийхэд.</p>
-          <div class="product-footer">
-            <span class="product-price">Үнийн санал авах</span>
-            <button class="btn-order"
-              onclick="<?= $user ? "openOrderModal('Хуш (Cedar)')" : "openModal('login-modal')" ?>">
-              Захиалах
-            </button>
-          </div>
-        </div>
-      </article>
-
-      <article class="product-card" data-type="bolvsuruulsan">
-        <div class="product-img">📦</div>
-        <div class="product-body">
-          <span class="product-type">Боловсруулсан</span>
-          <h3 class="product-name">Модон хавтан</h3>
-          <p class="product-desc">Янз бүрийн хэмжээний хавтан. Барилга, засал чимэглэлд.</p>
-          <div class="product-footer">
-            <span class="product-price">Үнийн санал авах</span>
-            <button class="btn-order"
-              onclick="<?= $user ? "openOrderModal('Модон хавтан')" : "openModal('login-modal')" ?>">
-              Захиалах
-            </button>
-          </div>
-        </div>
-      </article>
-
-      <article class="product-card" data-type="tulsh">
-        <div class="product-img">🔥</div>
-        <div class="product-body">
-          <span class="product-type">Түлш</span>
-          <h3 class="product-name">Түлш мод</h3>
-          <p class="product-desc">Хатааж бэлдсэн, өндөр калорийн шатамхай чанартай.</p>
-          <div class="product-footer">
-            <span class="product-price">Үнийн санал авах</span>
-            <button class="btn-order"
-              onclick="<?= $user ? "openOrderModal('Түлш мод')" : "openModal('login-modal')" ?>">
-              Захиалах
-            </button>
-          </div>
-        </div>
-      </article>
-
+    <?php endforeach; ?>
+    <?php endif; ?>
     </div><!-- /products-grid -->
   </div>
 </section>
@@ -691,6 +714,98 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 })();
 </script>
+
+<?php if ($isAdmin):
+function productFormFields(string $prefix = ''): string {
+    $types = ['shilmuust'=>'Шилмүүст','navchit'=>'Навчит','hatu'=>'Хатуу мод','bolvsuruulsan'=>'Боловсруулсан','tulsh'=>'Түлш'];
+    $opts = ''; foreach ($types as $v=>$l) $opts .= "<option value=\"$v\">$l</option>";
+    $p = $prefix;
+    return "<div style='display:grid;grid-template-columns:1fr 1fr;gap:14px'>
+      <div class='form-group'><label>Нэр *</label><input type='text' name='name' id='{$p}name' required></div>
+      <div class='form-group'><label>Төрөл *</label><select name='type' id='{$p}type'>$opts</select></div>
+      <div class='form-group'><label>Emoji</label><input type='text' name='emoji' id='{$p}emoji' placeholder='🌲' maxlength='4'></div>
+      <div class='form-group'><label>Үнийн тэмдэглэгээ</label><input type='text' name='price_label' id='{$p}price_label' placeholder='Үнийн санал авах'></div>
+      <div class='form-group'><label>Үнэ ₮ (заавал биш)</label><input type='number' name='price_value' id='{$p}price_value' min='0'></div>
+      <div class='form-group'><label>Үлдэгдэл (хоосон=хязгааргүй)</label><input type='number' name='stock' id='{$p}stock'></div>
+      <div class='form-group'><label>Эрэмбэ</label><input type='number' name='sort_order' id='{$p}sort_order' value='0'></div>
+      <div class='form-group' style='align-self:end'><label style='display:flex;gap:8px;align-items:center;text-transform:none;font-size:14px'><input type='checkbox' name='is_active' id='{$p}is_active' checked> Нүүр хуудсанд харагдах</label></div>
+      <div class='form-group' style='grid-column:1/-1'><label>Тайлбар</label><textarea name='description' id='{$p}description' rows='3'></textarea></div>
+      <div class='form-group' style='grid-column:1/-1'><label>Зураг (JPG/PNG/WebP, 3MB)</label><input type='file' name='image' id='{$p}image' accept='image/*'><div id='{$p}img-preview' style='margin-top:8px'></div></div>
+    </div>";
+}
+?>
+<!-- Product Add Modal -->
+<div class="modal-overlay" id="product-add-modal">
+  <div class="modal modal-wide">
+    <button class="modal-close" onclick="closeModal('product-add-modal')">&times;</button>
+    <h2 class="modal-title">➕ Шинэ бүтээгдэхүүн нэмэх</h2>
+    <form action="/Wood-shop/product_action.php" method="POST" enctype="multipart/form-data" class="auth-form">
+      <input type="hidden" name="act" value="add">
+      <input type="hidden" name="redirect" value="/Wood-shop/">
+      <?= productFormFields() ?>
+      <button type="submit" class="btn-form" style="margin-top:16px">✅ Нэмэх</button>
+    </form>
+  </div>
+</div>
+<!-- Product Edit Modal -->
+<div class="modal-overlay" id="product-edit-modal">
+  <div class="modal modal-wide">
+    <button class="modal-close" onclick="closeModal('product-edit-modal')">&times;</button>
+    <h2 class="modal-title">✏️ Бүтээгдэхүүн засах</h2>
+    <form action="/Wood-shop/product_action.php" method="POST" enctype="multipart/form-data" class="auth-form">
+      <input type="hidden" name="act" value="edit">
+      <input type="hidden" name="redirect" value="/Wood-shop/">
+      <input type="hidden" name="id" id="edit-product-id">
+      <?= productFormFields('edit-') ?>
+      <button type="submit" class="btn-form" style="margin-top:16px">💾 Хадгалах</button>
+    </form>
+  </div>
+</div>
+
+<style>
+.admin-toolbar{display:flex;align-items:center;gap:12px;background:#fff3cd;border:1px solid #ffc107;border-radius:10px;padding:10px 16px;margin-bottom:20px;flex-wrap:wrap}
+.admin-toolbar-badge{font-size:13px;font-weight:600;color:#856404;flex:1}
+.admin-add-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.admin-add-btn:hover{opacity:.88}
+.admin-dash-link{font-size:13px;color:var(--primary);font-weight:600;text-decoration:underline}
+.product-card{position:relative}
+.product-admin-bar{position:absolute;top:8px;right:8px;display:flex;gap:4px;align-items:center;z-index:10;opacity:0;transition:opacity .2s}
+.product-card:hover .product-admin-bar{opacity:1}
+.pab-btn{width:30px;height:30px;border:none;border-radius:6px;background:rgba(255,255,255,0.92);cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:transform .15s}
+.pab-btn:hover{transform:scale(1.12)}
+.pab-delete{background:#fde8e8}
+.pab-hidden-badge{background:#e74c3c;color:#fff;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700}
+.product-hidden{opacity:.5;outline:2px dashed #e74c3c;outline-offset:-2px}
+</style>
+
+<script>
+function openProductEdit(p) {
+  document.getElementById('edit-product-id').value  = p.id;
+  document.getElementById('edit-name').value        = p.name||'';
+  document.getElementById('edit-type').value        = p.type||'';
+  document.getElementById('edit-emoji').value       = p.emoji||'';
+  document.getElementById('edit-description').value = p.description||'';
+  document.getElementById('edit-price_label').value = p.price_label||'';
+  document.getElementById('edit-price_value').value = p.price_value||'';
+  document.getElementById('edit-stock').value       = p.stock||'';
+  document.getElementById('edit-sort_order').value  = p.sort_order||0;
+  document.getElementById('edit-is_active').checked = p.is_active==1;
+  var prev = document.getElementById('edit-img-preview');
+  if (prev) prev.innerHTML = p.image_path ? '<img src="/Wood-shop/'+p.image_path+'" style="max-height:80px;border-radius:8px">' : '';
+  openModal('product-edit-modal');
+}
+['image','edit-image'].forEach(function(id){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('change',function(){
+    var prevId = id==='image' ? 'img-preview' : 'edit-img-preview';
+    var prev = document.getElementById(prevId);
+    if(this.files[0]&&prev){var r=new FileReader();r.onload=function(e){prev.innerHTML='<img src="'+e.target.result+'" style="max-height:80px;border-radius:8px">'};r.readAsDataURL(this.files[0]);}
+  });
+});
+</script>
+<?php endif; ?>
+
 </body>
 <!-- Toast -->
 <div class="toast" id="toast">

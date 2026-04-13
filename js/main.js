@@ -210,7 +210,7 @@ function showToast(message, type, icon) {
 (function () {
   // Hash байвал modal нээх
   var hash = window.location.hash;
-  if (hash === '#login-modal' || hash === '#register-modal' || hash === '#otp-modal') {
+  if (hash === '#login-modal' || hash === '#register-modal' || hash === '#otp-modal' || hash === '#forgot-modal' || hash === '#reset-modal') {
     openModal(hash.replace('#', ''));
     history.replaceState(null, '', window.location.pathname);
   }
@@ -231,7 +231,7 @@ function showToast(message, type, icon) {
 })();
 
 
-/* ── 11. Password validation ── */
+/* ── 11. Password validation — бүртгэлийн modal ── */
 var regPwd     = document.getElementById('reg-password');
 var regConfirm = document.getElementById('reg-password-confirm');
 var matchMsg   = document.getElementById('pwd-match-msg');
@@ -239,7 +239,7 @@ var matchMsg   = document.getElementById('pwd-match-msg');
 function checkRule(id, ok) {
   var el = document.getElementById(id);
   if (!el) return;
-  var text = el.textContent.slice(2); // '✓ ' эсвэл '✗ ' хасах
+  var text = el.textContent.slice(2);
   el.textContent = (ok ? '✓ ' : '✗ ') + text;
   el.classList.toggle('ok', ok);
 }
@@ -267,3 +267,36 @@ if (regConfirm) {
     }
   });
 }
+
+
+/* ── 12. Password validation — reset modal ── */
+var resetPwd     = document.getElementById('reset-password');
+var resetConfirm = document.getElementById('reset-password-confirm');
+var resetMatch   = document.getElementById('reset-match-msg');
+
+if (resetPwd) {
+  resetPwd.addEventListener('input', function () {
+    var v = resetPwd.value;
+    checkRule('reset-rule-len', v.length >= 8);
+    checkRule('reset-rule-upp', /[A-Z]/.test(v));
+    checkRule('reset-rule-num', /[0-9]/.test(v));
+  });
+}
+
+if (resetConfirm) {
+  resetConfirm.addEventListener('input', function () {
+    if (!resetConfirm.value) {
+      resetMatch.textContent = '';
+      resetMatch.className   = 'pwd-match-msg';
+    } else if (resetConfirm.value === resetPwd.value) {
+      resetMatch.textContent = '✓ Нууц үг таарч байна';
+      resetMatch.className   = 'pwd-match-msg ok';
+    } else {
+      resetMatch.textContent = '✗ Нууц үг таарахгүй байна';
+      resetMatch.className   = 'pwd-match-msg err';
+    }
+  });
+}
+
+
+/* ── 10. Хуудас ачаалахад: hash modal + server toast ── */
