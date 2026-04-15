@@ -91,10 +91,50 @@ document.addEventListener('keydown', function (e) {
 function openOrderModal(productName) {
   openModal('order-modal');
   var sel = document.getElementById('order-product');
+  var badge = document.getElementById('order-selected-product');
+
   if (sel && productName) {
-    sel.value = productName;
+    // Dropdown-с хайж сонгох
+    var found = false;
+    for (var i = 0; i < sel.options.length; i++) {
+      // Бүтээгдэхүүний нэр option-ны value-тай тохирч байгаа эсэх
+      // (emoji болон үнийн мэдээлэл хасаад харьцуулна)
+      if (sel.options[i].value === productName) {
+        sel.selectedIndex = i;
+        found = true;
+        break;
+      }
+    }
+    // Яг таарахгүй бол хэсэгчлэн хайх (жнь: "Нарсан палк" агуулсан option)
+    if (!found) {
+      for (var j = 0; j < sel.options.length; j++) {
+        if (sel.options[j].value.indexOf(productName) !== -1 ||
+            productName.indexOf(sel.options[j].value) !== -1) {
+          sel.selectedIndex = j;
+          found = true;
+          break;
+        }
+      }
+    }
+    // Сонгосон бүтээгдэхүүний нэр badge-д харуулах
+    if (badge) {
+      if (found && sel.value) {
+        badge.style.display = 'block';
+        badge.textContent = '✅ Сонгосон: ' + productName;
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  }
+
+  // Form-ыг цэвэрлэх (өмнөх утгуудыг арилгах, бүтээгдэхүүнээс бусад)
+  var form = document.querySelector('#order-modal form');
+  if (form) {
+    var inputs = form.querySelectorAll('input[type=number], textarea');
+    inputs.forEach(function(el) { el.value = ''; });
   }
 }
+
 
 
 /* ── 6. Бүтээгдэхүүн шүүлтүүр ── */
@@ -210,7 +250,7 @@ function showToast(message, type, icon) {
 (function () {
   // Hash байвал modal нээх
   var hash = window.location.hash;
-  if (hash === '#login-modal' || hash === '#register-modal' || hash === '#otp-modal' || hash === '#forgot-modal' || hash === '#reset-modal') {
+  if (hash === '#login-modal' || hash === '#register-modal' || hash === '#otp-modal') {
     openModal(hash.replace('#', ''));
     history.replaceState(null, '', window.location.pathname);
   }
@@ -231,7 +271,7 @@ function showToast(message, type, icon) {
 })();
 
 
-/* ── 11. Password validation — бүртгэлийн modal ── */
+/* ── 11. Password validation ── */
 var regPwd     = document.getElementById('reg-password');
 var regConfirm = document.getElementById('reg-password-confirm');
 var matchMsg   = document.getElementById('pwd-match-msg');
@@ -239,7 +279,7 @@ var matchMsg   = document.getElementById('pwd-match-msg');
 function checkRule(id, ok) {
   var el = document.getElementById(id);
   if (!el) return;
-  var text = el.textContent.slice(2);
+  var text = el.textContent.slice(2); // '✓ ' эсвэл '✗ ' хасах
   el.textContent = (ok ? '✓ ' : '✗ ') + text;
   el.classList.toggle('ok', ok);
 }
@@ -268,35 +308,37 @@ if (regConfirm) {
   });
 }
 
-
-/* ── 12. Password validation — reset modal ── */
-var resetPwd     = document.getElementById('reset-password');
-var resetConfirm = document.getElementById('reset-password-confirm');
-var resetMatch   = document.getElementById('reset-match-msg');
-
-if (resetPwd) {
-  resetPwd.addEventListener('input', function () {
-    var v = resetPwd.value;
-    checkRule('reset-rule-len', v.length >= 8);
-    checkRule('reset-rule-upp', /[A-Z]/.test(v));
-    checkRule('reset-rule-num', /[0-9]/.test(v));
-  });
+/*  Dropdown toggle  */
+function toggleUserDropdown() {
+  var menu = document.getElementById('dropdown-menu');
+  menu.classList.toggle('open');
 }
-
-if (resetConfirm) {
-  resetConfirm.addEventListener('input', function () {
-    if (!resetConfirm.value) {
-      resetMatch.textContent = '';
-      resetMatch.className   = 'pwd-match-msg';
-    } else if (resetConfirm.value === resetPwd.value) {
-      resetMatch.textContent = '✓ Нууц үг таарч байна';
-      resetMatch.className   = 'pwd-match-msg ok';
-    } else {
-      resetMatch.textContent = '✗ Нууц үг таарахгүй байна';
-      resetMatch.className   = 'pwd-match-msg err';
-    }
-  });
-}
-
-
-/* ── 10. Хуудас ачаалахад: hash modal + server toast ── */
+ 
+// Гадна дарахад хаах
+document.addEventListener('click', function(e) {
+  var dd = document.getElementById('user-dropdown');
+  if (dd && !dd.contains(e.target)) {
+    document.getElementById('dropdown-menu').classList.remove('open');
+  }
+});
+ 
+//── Chat unread polling (нэвтэрсэн хэрэглэгчид л) ──
+(function() {
+  function checkUnread() {
+    fetch('/Wood-shop/chat.php?act=unread')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var badge = document.getElementById('chat-badge');
+      if (badge) {
+        if (data.ok && data.unread > 0) {
+          badge.textContent    = data.unread;
+          badge.style.display  = 'inline-block';
+        } else {
+          badge.style.display  = 'none';
+        }
+      }
+    }).catch(function(){});
+  }
+  checkUnread();
+  setInterval(checkUnread, 10000); // 10 секунд тутам
+})();

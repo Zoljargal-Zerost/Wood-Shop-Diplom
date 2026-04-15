@@ -4,8 +4,23 @@
 --  phpMyAdmin → modni_zah → SQL tab → Run
 -- ============================================================
 
--- Хуучин бүтээгдэхүүнүүдийг арилгах
-TRUNCATE TABLE products;
+
+CREATE TABLE IF NOT EXISTS products (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  name        VARCHAR(100)   NOT NULL,           -- "Нарс (Pine)"
+  type        VARCHAR(50)    NOT NULL,           -- "shilmuust" filter-тэй таарна
+  emoji       VARCHAR(10)    DEFAULT '🪵',
+  description TEXT           DEFAULT NULL,
+  price_label VARCHAR(100)   DEFAULT 'Үнийн санал авах',
+  price_value DECIMAL(12,2)  DEFAULT NULL,       -- бодит үнэ (заавал биш)
+  image_path  VARCHAR(255)   DEFAULT NULL,       -- uploads/products/xxx.jpg
+  stock       INT            DEFAULT NULL,       -- NULL = тоо хязгааргүй
+  is_active   TINYINT(1)     DEFAULT 1,          -- 0 = нуугдсан
+  sort_order  INT            DEFAULT 0,          -- эрэмбэ
+  created_by  INT            DEFAULT NULL,
+  created_at  DATETIME       DEFAULT NOW(),
+  updated_at  DATETIME       DEFAULT NOW() ON UPDATE NOW()
+);
 
 -- ============================================================
 --  1. НАРСАН МОД (Pinus sylvestris) — Хамгийн их зарагддаг

@@ -28,6 +28,8 @@ ON DUPLICATE KEY UPDATE
   permissions = VALUES(permissions),
   color = VALUES(color);
   
+  select * from Roles;
+  
 -- ------------------------------------------------------------
 --  3. Захирал хэрэглэгч үүсгэх (заавал биш, test хийхэд)
 --     Нэвтрэх: director@woodshop.mn / Director@1234

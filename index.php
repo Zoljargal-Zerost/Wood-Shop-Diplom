@@ -1,7 +1,9 @@
 <?php
 session_start();
-$user    = $_SESSION['user'] ?? null;
-$isAdmin = $user && in_array($_SESSION['user_role']['slug'] ?? '', ['admin','manager']);
+$user      = $_SESSION['user'] ?? null;
+$roleSlug  = $_SESSION['user_role']['slug'] ?? 'user';
+$isAdmin   = $user && in_array($roleSlug, ['admin','manager']);
+$isStaff   = $user && in_array($roleSlug, ['admin','manager','worker','driver','director']);
 
 // DB холболт
 try {
@@ -81,11 +83,32 @@ if ($user && $pdo) {
 
     <div class="nav-actions">
       <?php if ($user): ?>
-        <a href="/Wood-shop/dashboard/" class="btn-user">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
-          <?= htmlspecialchars($user['ner']) ?>
-        </a>
-        <a href="/Wood-shop/auth.php?action=logout" class="btn-outline-sm">Гарах</a>
+        <?php if ($isStaff): ?>
+          <!-- Ажилтан/Admin — шууд dashboard руу -->
+          <a href="/Wood-shop/dashboard/" class="btn-user">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+            <?= htmlspecialchars($user['ner']) ?>
+          </a>
+          <a href="/Wood-shop/auth.php?action=logout" class="btn-outline-sm">Гарах</a>
+        <?php else: ?>
+          <!-- Хэрэглэгч — dropdown (dashboard + chat) -->
+          <div class="user-dropdown" id="user-dropdown">
+            <button class="btn-user" onclick="toggleUserDropdown()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+              <?= htmlspecialchars($user['ner']) ?>
+              <span style="font-size:10px;margin-left:2px">▾</span>
+            </button>
+            <div class="dropdown-menu" id="dropdown-menu">
+              <a href="/Wood-shop/dashboard/" class="dropdown-item">📊 Миний захиалгууд</a>
+              <a href="/Wood-shop/chat-user.php" class="dropdown-item">
+                💬 Ажилтантай чатлах
+                <span class="chat-unread-badge" id="chat-badge" style="display:none">0</span>
+              </a>
+              <div class="dropdown-divider"></div>
+              <a href="/Wood-shop/auth.php?action=logout" class="dropdown-item">🚪 Гарах</a>
+            </div>
+          </div>
+        <?php endif; ?>
       <?php else: ?>
         <button class="btn-outline-sm" onclick="openModal('login-modal')">Нэвтрэх</button>
         <button class="btn-primary-sm" onclick="openModal('register-modal')">Бүртгүүлэх</button>
@@ -124,11 +147,11 @@ if ($user && $pdo) {
     </div>
 
     <div class="hero-stats">
-      <div class="stat"><span class="stat-num">15+</span><span class="stat-lbl">Жилийн туршлага</span></div>
+      <div class="stat"><span class="stat-num">12+</span><span class="stat-lbl">Жилийн туршлага</span></div>
       <div class="stat-div"></div>
-      <div class="stat"><span class="stat-num">1000+</span><span class="stat-lbl">Хэрэглэгч</span></div>
+      <div class="stat"><span class="stat-num">200+</span><span class="stat-lbl">Хэрэглэгч</span></div>
       <div class="stat-div"></div>
-      <div class="stat"><span class="stat-num">6+</span><span class="stat-lbl">Модны төрөл</span></div>
+      <div class="stat"><span class="stat-num">10+</span><span class="stat-lbl">Модны төрөл</span></div>
     </div>
   </div>
 
@@ -316,10 +339,10 @@ if ($user && $pdo) {
       <div class="about-text">
         <span class="section-label">Бидний тухай</span>
         <h2 class="section-title left">Манай түүх</h2>
-        <p>Модны зах нь Дархан хотноо 2014 оноос хойш
-          <strong>12 жилийн турш</strong> Дархан Уул аймгийн иргэддээ сайн чанарын мод нийлүүлж ирсэн.</p>
-        <p>Бид байгаль орчинд ээлтэй, тогтвортой байдлыг дэмжин,
-          зөвхөн сертификаттай эх сурвалжаас мод авдаг.</p>
+        <p>Модны зах нь Дархан хотод 2014 оноос хойш 
+        <strong>12 жилийн турш</strong> үйл ажиллагаа явуулж байна.</p>
+        <p>Бид мод бэлтгэх зохих зөвшөөрөлтэй аж ахуйн нэгж болон хувь хүмүүсээс мод, 
+        модон материалыг худалдан авч, Дархан хотын иргэдэд нийлүүлдэг.</p>
         <a href="#contact" class="btn-text-link">Бидэнтэй холбогдох &rarr;</a>
       </div>
 
@@ -327,17 +350,17 @@ if ($user && $pdo) {
         <div class="value-card">
           <span class="value-icon">🏆</span>
           <h4>Чанар</h4>
-          <p>Зөвхөн шалгагдсан, сертификаттай мод</p>
+          <p>Мод бэлтгэх зохих зөвшөөрөлтөй</p>
         </div>
         <div class="value-card">
           <span class="value-icon">🌱</span>
           <h4>Байгаль орчин</h4>
-          <p>Тогтвортой, хариуцлагатай эх сурвалж</p>
+          <p>Хор хөнөөлгүй, Сөрөг нөлөөгүй</p>
         </div>
         <div class="value-card">
           <span class="value-icon">👥</span>
           <h4>Харилцагч</h4>
-          <p>1000+ хэрэглэгч</p>
+          <p>200+ хэрэглэгч</p>
         </div>
         <div class="value-card">
           <span class="value-icon">🤝</span>
@@ -371,7 +394,7 @@ if ($user && $pdo) {
         <span class="contact-icon">✉️</span>
         <h3>Имэйл</h3>
         <p class="contact-main">info@woodshop.mn</p>
-        <p class="contact-note">24 цагт хариулна</p>
+        <p class="contact-note">24/7 цаг хүлээн авна</p>
       </div>
       <div class="contact-card">
         <span class="contact-icon">📍</span>

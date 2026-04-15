@@ -56,10 +56,48 @@ button { cursor: pointer; font-family: inherit; }
   background: #7e5329bf;
 }
 
+/* Navbar scroll хийхэд */
 .navbar.scrolled {
   background: rgba(249,245,238,0.95);
   backdrop-filter: blur(12px);
   box-shadow: 0 1px 0 var(--border);
+}
+
+/* Scrolled үед logo өнгө */
+.navbar.scrolled .nav-logo {
+  color: var(--text);
+}
+
+/* Scrolled үед nav link өнгө */
+.navbar.scrolled .nav-link {
+  color: var(--text-muted);
+}
+
+.navbar.scrolled .nav-link:hover,
+.navbar.scrolled .nav-link.active {
+  color: var(--accent);
+  background: var(--accent-lt);
+}
+
+/* Scrolled үед товчнуудын өнгө */
+.navbar.scrolled .btn-outline-sm {
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.navbar.scrolled .btn-primary-sm {
+  background: var(--accent);
+  color: #fff;
+}
+
+.navbar.scrolled .btn-user {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Scrolled үед hamburger */
+.navbar.scrolled .hamburger span {
+  background: var(--text);
 }
 
 .nav-inner {
@@ -946,6 +984,59 @@ button { cursor: pointer; font-family: inherit; }
   font-size: 16px;
 }
 
+/* User dropdown */
+.user-dropdown { position: relative; }
+ 
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(92,61,30,0.15);
+  min-width: 180px;
+  z-index: 999;
+  overflow: hidden;
+  animation: dropIn 0.15s ease;
+}
+ 
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+ 
+.dropdown-menu.open { display: block; }
+ 
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  font-size: 14px;
+  color: var(--text);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.dropdown-item:hover { background: var(--bg-alt); }
+ 
+.dropdown-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+ 
+/* Chat unread badge */
+.chat-unread-badge {
+  background: #E24B4A;
+  color: #fff;
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: auto;
+}
 
 /* ═══════════════════════════════════════════
    SCROLL REVEAL ANIMATION

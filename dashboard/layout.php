@@ -315,6 +315,13 @@ if (isRole('admin','manager','director')) {
         <?= $item['icon'] ?> <?= htmlspecialchars($item['label']) ?>
       </a>
     <?php endforeach; ?>
+
+    <?php if (isRole('worker','admin','manager','director')): ?>
+      <a href="chat.php" class="<?= ($activePage ?? '') === 'chat' ? 'active' : '' ?>">
+        💬 Чат
+        <span id="sidebar-chat-badge" style="margin-left:auto;background:#E24B4A;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;display:none">0</span>
+      </a>
+    <?php endif; ?>
   </nav>
 
   <div class="sidebar-bottom">
@@ -329,6 +336,12 @@ if (isRole('admin','manager','director')) {
     <div class="topbar-title"><?= htmlspecialchars($pageTitle ?? 'Dashboard') ?></div>
     <div class="topbar-right">
       <span style="color:var(--muted);font-size:13px"><?= htmlspecialchars($userEmail) ?></span>
+      <?php if (isRole('worker','admin','manager','director')): ?>
+      <a href="chat.php" style="position:relative;display:inline-flex;align-items:center;gap:6px">
+        💬
+        <span id="topbar-chat-badge" style="display:none;background:#E24B4A;color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;font-weight:700">0</span>
+      </a>
+      <?php endif; ?>
       <a href="/Wood-shop/auth.php?action=logout">Гарах →</a>
     </div>
   </div>
