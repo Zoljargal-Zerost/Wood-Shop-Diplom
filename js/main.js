@@ -87,52 +87,180 @@ document.addEventListener('keydown', function (e) {
 });
 
 
-/* ── 5. Захиалгын modal — бүтээгдэхүүн урьдчилан сонгох ── */
-function openOrderModal(productName) {
+/* ── 5. Захиалгын cart систем ── */
+var CART = [];
+var CART_VARIANTS = {};
+var CART_CUR_VARIANT = null;
+var UNIT_LABELS = {shirheg:'Ширхэгээр', kub:'м³-ээр', bagts:'Багцаар', porter:'Портер-аар'};
+
+function openOrderModal(preselect) {
   openModal('order-modal');
-  var sel = document.getElementById('order-product');
-  var badge = document.getElementById('order-selected-product');
+  cartLoadProducts(preselect || null);
+}
 
-  if (sel && productName) {
-    // Dropdown-с хайж сонгох
-    var found = false;
-    for (var i = 0; i < sel.options.length; i++) {
-      // Бүтээгдэхүүний нэр option-ны value-тай тохирч байгаа эсэх
-      // (emoji болон үнийн мэдээлэл хасаад харьцуулна)
-      if (sel.options[i].value === productName) {
-        sel.selectedIndex = i;
-        found = true;
-        break;
-      }
-    }
-    // Яг таарахгүй бол хэсэгчлэн хайх (жнь: "Нарсан палк" агуулсан option)
-    if (!found) {
-      for (var j = 0; j < sel.options.length; j++) {
-        if (sel.options[j].value.indexOf(productName) !== -1 ||
-            productName.indexOf(sel.options[j].value) !== -1) {
-          sel.selectedIndex = j;
-          found = true;
-          break;
-        }
-      }
-    }
-    // Сонгосон бүтээгдэхүүний нэр badge-д харуулах
-    if (badge) {
-      if (found && sel.value) {
-        badge.style.display = 'block';
-        badge.textContent = '✅ Сонгосон: ' + productName;
-      } else {
-        badge.style.display = 'none';
-      }
-    }
-  }
+function cartLoadProducts(preselect) {
+  fetch('/Wood-shop/cart_api.php?act=products')
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if (!data.ok) return;
+    var sel = document.getElementById('cart-type');
+    sel.innerHTML = '<option value="">— Сонгох —</option>';
+    data.products.forEach(function(p){
+      var o = document.createElement('option');
+      o.value = p.id; o.textContent = p.emoji + ' ' + p.name;
+      if (preselect && p.id == preselect) o.selected = true;
+      sel.appendChild(o);
+    });
+    if (preselect) cartOnTypeChange();
+  });
+}
 
-  // Form-ыг цэвэрлэх (өмнөх утгуудыг арилгах, бүтээгдэхүүнээс бусад)
-  var form = document.querySelector('#order-modal form');
-  if (form) {
-    var inputs = form.querySelectorAll('input[type=number], textarea');
-    inputs.forEach(function(el) { el.value = ''; });
+function cartOnTypeChange() {
+  var pid = document.getElementById('cart-type').value;
+  var vsel = document.getElementById('cart-variant');
+  vsel.innerHTML = '<option value="">— Хэмжээ сонгох —</option>';
+  document.getElementById('cart-qty-row').style.display = 'none';
+  document.getElementById('cart-price-preview').style.display = 'none';
+  document.getElementById('cart-add-btn').style.display = 'none';
+  document.getElementById('cart-hint').textContent = '';
+  CART_CUR_VARIANT = null;
+  CART_VARIANTS = {};
+  if (!pid) return;
+
+  fetch('/Wood-shop/cart_api.php?act=variants&product_id=' + pid)
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if (!data.ok) return;
+    data.variants.forEach(function(v){
+      CART_VARIANTS[v.id] = v;
+      var o = document.createElement('option');
+      o.value = v.id; o.textContent = v.name;
+      vsel.appendChild(o);
+    });
+  });
+}
+
+function cartOnVariantChange() {
+  var vid = document.getElementById('cart-variant').value;
+  if (!vid) { CART_CUR_VARIANT = null; return; }
+  CART_CUR_VARIANT = CART_VARIANTS[vid];
+  if (!CART_CUR_VARIANT) return;
+  var v = CART_CUR_VARIANT;
+
+  var usel = document.getElementById('cart-unit');
+  usel.innerHTML = '';
+  if (v.sell_shirheg) usel.innerHTML += '<option value="shirheg">Ширхэгээр</option>';
+  if (v.sell_kub)     usel.innerHTML += '<option value="kub">м³-ээр</option>';
+  if (v.sell_bagts)   usel.innerHTML += '<option value="bagts">Багцаар</option>';
+  if (v.sell_porter)  usel.innerHTML += '<option value="porter">Портераар</option>';
+
+  document.getElementById('cart-qty').value = 1;
+  document.getElementById('cart-qty-row').style.display = 'grid';
+  document.getElementById('cart-add-btn').style.display = 'block';
+  cartCalcPrice();
+}
+
+function cartCalcPrice() {
+  if (!CART_CUR_VARIANT) return;
+  var v    = CART_CUR_VARIANT;
+  var unit = document.getElementById('cart-unit').value;
+  var qty  = parseFloat(document.getElementById('cart-qty').value) || 1;
+  var price = 0;
+
+  if (unit === 'shirheg') price = (v.unit_price  || 0) * qty;
+  else if (unit === 'kub')    price = (v.cube_price  || 0) * qty;
+  else if (unit === 'bagts')  price = (v.pack_price  || 0) * qty;
+  else if (unit === 'porter') price = (v.porter_price || 0) * qty;
+
+  var hint = '';
+  if ((unit === 'shirheg' || unit === 'kub') && v.per_cube) hint = '1 куб = ' + v.per_cube + ' ширхэг';
+  if (unit === 'bagts' && v.per_pack) hint = '1 багц = ' + v.per_pack + ' ширхэг';
+  document.getElementById('cart-hint').textContent = hint;
+
+  var preview = document.getElementById('cart-price-preview');
+  preview.style.display = 'flex';
+  document.getElementById('cart-price-desc').textContent = qty + ' ' + UNIT_LABELS[unit].toLowerCase();
+  document.getElementById('cart-price-val').textContent  = '₮' + Math.round(price).toLocaleString();
+}
+
+function cartAddItem() {
+  if (!CART_CUR_VARIANT) return;
+  var v    = CART_CUR_VARIANT;
+  var unit = document.getElementById('cart-unit').value;
+  var qty  = parseFloat(document.getElementById('cart-qty').value) || 1;
+  var price = 0;
+
+  if (unit === 'shirheg') price = (v.unit_price  || 0) * qty;
+  else if (unit === 'kub')    price = (v.cube_price  || 0) * qty;
+  else if (unit === 'bagts')  price = (v.pack_price  || 0) * qty;
+  else if (unit === 'porter') price = (v.porter_price || 0) * qty;
+
+  var typeEl = document.getElementById('cart-type');
+  var typeName = typeEl.options[typeEl.selectedIndex].text.replace(/^.\s/, '');
+
+  CART.push({
+    id:           Date.now(),
+    variant_id:   v.id,
+    product_name: typeName,
+    variant_name: v.name,
+    sell_type:    unit,
+    qty:          qty,
+    price:        Math.round(price),
+  });
+  cartRender();
+  document.getElementById('cart-qty').value = 1;
+  cartCalcPrice();
+}
+
+function cartRemove(id) {
+  CART = CART.filter(function(i){ return i.id !== id; });
+  cartRender();
+}
+
+function cartRender() {
+  var empty     = document.getElementById('cart-empty-msg');
+  var table     = document.getElementById('cart-table');
+  var tbody     = document.getElementById('cart-tbody');
+  var totalRow  = document.getElementById('cart-total-row');
+  var submitBtn = document.getElementById('cart-submit-btn');
+
+  if (CART.length === 0) {
+    empty.style.display     = 'block';
+    table.style.display     = 'none';
+    totalRow.style.display  = 'none';
+    submitBtn.style.display = 'none';
+    return;
   }
+  empty.style.display     = 'none';
+  table.style.display     = 'table';
+  totalRow.style.display  = 'flex';
+  submitBtn.style.display = 'block';
+
+  var total = 0;
+  tbody.innerHTML = '';
+  CART.forEach(function(item){
+    total += item.price;
+    var tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #DDD0BC';
+    tr.innerHTML =
+      '<td style="padding:8px;font-weight:600;font-size:13px">' + item.product_name + '</td>' +
+      '<td style="padding:8px;color:#7A6248;font-size:12px">' + item.variant_name + '</td>' +
+      '<td style="padding:8px;text-align:center">' + item.qty + '</td>' +
+      '<td style="padding:8px;font-size:11px"><span style="background:#F2EDE3;padding:2px 6px;border-radius:4px">' + UNIT_LABELS[item.sell_type] + '</span></td>' +
+      '<td style="padding:8px;text-align:right;font-weight:700;color:#C8833A">₮' + item.price.toLocaleString() + '</td>' +
+      '<td style="padding:4px"><button onclick="cartRemove(' + item.id + ')" style="background:none;border:none;cursor:pointer;color:#7A6248;font-size:15px">✕</button></td>';
+    tbody.appendChild(tr);
+  });
+  document.getElementById('cart-total-price').textContent = '₮' + total.toLocaleString();
+}
+
+function cartPrepareSubmit() {
+  if (CART.length === 0) { alert('Сагс хоосон байна.'); return false; }
+  var cartData = CART.map(function(i){
+    return { variant_id: i.variant_id, sell_type: i.sell_type, qty: i.qty };
+  });
+  document.getElementById('cart-json-input').value = JSON.stringify(cartData);
+  return true;
 }
 
 

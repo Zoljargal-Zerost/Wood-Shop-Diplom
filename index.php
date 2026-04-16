@@ -269,7 +269,7 @@ if ($user && $pdo) {
               <?php endif; ?>
             </span>
             <button class="btn-order"
-              onclick="<?= $user ? "openOrderModal('".addslashes($p['name'])."')" : "openModal('login-modal')" ?>">
+              onclick="<?= $user ? "openOrderModal(" . (int)$p['id'] . ")" : "openModal('login-modal')" ?>">
               Захиалах
             </button>
           </div>
@@ -297,10 +297,10 @@ if ($user && $pdo) {
       <div class="location-card">
         <div class="location-icon">🏪</div>
         <div class="location-info">
-          <h3>Үндсэн дэлгүүр</h3>
-          <span class="location-badge">Үндсэн дэлгүүр</span>
+          <h3>Үндсэн Салбарууд</h3>
+          <span class="location-badge">Үндсэн Зах</span>
           <ul class="location-details">
-            <li><span class="ld-icon">📍</span> Дархан-Уул, Дархан сум, 45000</li>
+            <li><span class="ld-icon">📍</span> Дархан-Уул, Дархан сум</li>
             <li><span class="ld-icon">📞</span> 9446-9149</li>
             <li><span class="ld-icon">🕐</span> Да–Ба: 09:00–18:00 · Бя: 10:00–16:00</li>
           </ul>
@@ -312,10 +312,10 @@ if ($user && $pdo) {
         <div class="location-icon">🏭</div>
         <div class="location-info">
           <h3>Агуулах</h3>
-          <span class="location-badge secondary">Агуулах · Хүргэлт</span>
+          <span class="location-badge secondary">Үндсэн Агуулах</span>
           <ul class="location-details">
-            <li><span class="ld-icon">📍</span> Дархан-Уул, Дархан-2</li>
-            <li><span class="ld-icon">📞</span> 1234-5678</li>
+            <li><span class="ld-icon">📍</span> Сэлэнгэ, Сүхбаатар</li>
+            <li><span class="ld-icon">📞</span> 9557-3545</li>
             <li><span class="ld-icon">🕐</span> Да–Ба: 09:00–17:00 · Бя: Урьдчилж захиалах</li>
           </ul>
           <a href="#contact" class="btn-location">Холбоо барих &rarr;</a>
@@ -543,11 +543,69 @@ if ($user && $pdo) {
         </div>
       </div>
 
+      <div style="background:var(--bg-alt);border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:12px;color:var(--text-muted);line-height:1.6">
+        🔒 Таны нэр, имэйл, утасны дугаар нь зөвхөн захиалгын үйлчилгээ болон тантай холбогдох зорилгоор ашиглагдах бөгөөд гуравдагч этгээдэд дамжуулагдахгүй.
+      </div>
+
+      <label style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;cursor:pointer;font-size:13px;color:var(--text-muted)">
+        <input type="checkbox" id="agree-terms" name="agree_terms" required
+          style="margin-top:3px;flex-shrink:0;accent-color:var(--accent)">
+        <span>
+          Би <a href="#terms-modal" onclick="openModal('terms-modal');return false;"
+            style="color:var(--accent);font-weight:600">Үйлчилгээний нөхцөл</a> болон
+          <a href="#terms-modal" onclick="openModal('terms-modal');return false;"
+            style="color:var(--accent);font-weight:600">Нууцлалын бодлого</a>-г уншиж танилцан зөвшөөрч байна.
+        </span>
+      </label>
+
       <button type="submit" class="btn-form">Код илгээх →</button>
       <p class="form-switch">Бүртгэлтэй юу?
         <a href="#" onclick="switchModal('register-modal','login-modal')">Нэвтрэх</a>
       </p>
     </form>
+  </div>
+</div>
+
+<!-- Үйлчилгээний нөхцөл + Буцаалтын дүрэм modal -->
+<div class="modal-overlay" id="terms-modal">
+  <div class="modal" style="max-width:560px">
+    <button class="modal-close" onclick="closeModal('terms-modal')">&times;</button>
+    <h2 class="modal-title">Үйлчилгээний нөхцөл</h2>
+
+    <div style="max-height:60vh;overflow-y:auto;padding-right:4px">
+
+      <h3 style="font-size:14px;font-weight:700;color:var(--primary);margin:0 0 8px">
+        🔒 Нууцлалын бодлого
+      </h3>
+      <p style="font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:16px">
+        Та бүртгүүлэхдээ оруулсан хувийн мэдээлэл (нэр, имэйл, утасны дугаар) нь зөвхөн
+        захиалгын үйлчилгээ болон тантай холбогдох зорилгоор ашиглагдах бөгөөд гуравдагч
+        этгээдэд дамжуулагдахгүй болно. Та өөрийн мэдээллийг хэдийд ч устгуулах хүсэлт
+        гаргах эрхтэй.
+      </p>
+
+      <div style="height:1px;background:var(--border);margin-bottom:16px"></div>
+
+      <h3 style="font-size:14px;font-weight:700;color:var(--primary);margin:0 0 8px">
+        📦 Буцаалт болон солилтын дүрэм
+      </h3>
+      <ul style="font-size:13px;color:var(--text-muted);line-height:1.8;padding-left:18px;margin-bottom:16px">
+        <li>Захиалга хүлээн авснаас хойш <strong style="color:var(--text)">3 хоногийн дотор</strong> буцаалт хийх хүсэлт гаргах боломжтой.</li>
+        <li>3 хоног өнгөрсний дараа буцаалт хийгдэхгүй бөгөөд төлбөр олгогдохгүй.</li>
+        <li>Буцаалт хийхдээ мод нь <strong style="color:var(--text)">хүлээн авсан байдлаараа</strong> буцаагдах ёстой — огтолсон, хайчилсан, гэмтээсэн тохиолдолд буцаалт хийгдэхгүй.</li>
+        <li>Хэрэглэгчийн буруугаас үүдсэн гэмтэл, алдааны хувьд буцаалт хийгдэхгүй.</li>
+        <li>Буцаалтын хүсэлтийг <strong style="color:var(--text)">9446-9149</strong> утсаар эсвэл системийн чат-аар гаргана.</li>
+      </ul>
+
+      <div style="background:var(--accent-lt);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--text-muted)">
+        ⚠️ Хаягдал түлээ болон зах банз зэрэг тусгай бүтээгдэхүүнд буцаалт хийгдэхгүй.
+      </div>
+
+    </div>
+
+    <button class="btn-form" style="margin-top:16px" onclick="closeModal('terms-modal');document.getElementById('agree-terms').checked=true;">
+      Зөвшөөрч хаах
+    </button>
   </div>
 </div>
 
@@ -600,52 +658,80 @@ if ($user && $pdo) {
 
 <!-- Order Modal -->
 <div class="modal-overlay" id="order-modal">
-  <div class="modal modal-wide">
+  <div class="modal modal-wide" style="max-width:640px">
     <button class="modal-close" onclick="closeModal('order-modal')">&times;</button>
     <h2 class="modal-title">Захиалга өгөх</h2>
 
-    <form action="process_order.php" method="POST" class="auth-form">
+    <!-- Бүтээгдэхүүн нэмэх хэсэг -->
+    <div style="background:var(--bg-alt);border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em">Бүтээгдэхүүн нэмэх</div>
       <div class="form-row">
         <div class="form-group">
-          <label>Модны төрөл <span class="req">*</span></label>
-          <select name="product" id="order-product" required>
-            <option value="">Сонгох...</option>
-            <option value="Нарс (Pine)">Нарс (Pine)</option>
-            <option value="Хус (Birch)">Хус (Birch)</option>
-            <option value="Хар мод">Хар мод</option>
-            <option value="Хуш (Cedar)">Хуш (Cedar)</option>
-            <option value="Модон хавтан">Модон хавтан</option>
-            <option value="Түлш мод">Түлш мод</option>
-            <option value="Бусад">Бусад</option>
+          <label>Төрөл</label>
+          <select id="cart-type" onchange="cartOnTypeChange()">
+            <option value="">— Сонгох —</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Тоо ширхэг <span class="req">*</span></label>
-          <input type="number" name="shirheg" min="1" placeholder="10" required>
+          <label>Хэмжээ / Вариант</label>
+          <select id="cart-variant" onchange="cartOnVariantChange()">
+            <option value="">— Эхлээд төрөл —</option>
+          </select>
         </div>
       </div>
-
-      <div class="form-row">
+      <div class="form-row" id="cart-qty-row" style="display:none">
         <div class="form-group">
-          <label>Урт (метр) <span class="req">*</span></label>
-          <input type="number" name="urt_m" step="0.1" min="0.1" placeholder="3.0" required>
+          <label>Зарах нэгж</label>
+          <select id="cart-unit" onchange="cartCalcPrice()">
+            <option value="shirheg">Ширхэгээр</option>
+          </select>
         </div>
         <div class="form-group">
-          <label>Өргөн (см) <span class="req">*</span></label>
-          <input type="number" name="urgun_cm" min="1" placeholder="15" required>
-        </div>
-        <div class="form-group">
-          <label>Зузаан (см) <span class="req">*</span></label>
-          <input type="number" name="zuzaan_cm" step="0.1" min="0.1" placeholder="2.5" required>
+          <label>Тоо</label>
+          <input type="number" id="cart-qty" min="1" value="1" oninput="cartCalcPrice()">
+          <div id="cart-hint" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
         </div>
       </div>
+      <div id="cart-price-preview" style="display:none;background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:8px;margin-bottom:10px;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;color:var(--text-muted)" id="cart-price-desc">—</span>
+        <span style="font-size:16px;font-weight:700;color:var(--accent)" id="cart-price-val">₮0</span>
+      </div>
+      <button type="button" class="btn-form" id="cart-add-btn" onclick="cartAddItem()" style="display:none;padding:9px;font-size:13px;margin-top:4px">+ Сагсанд нэмэх</button>
+    </div>
 
-      <div class="form-group">
+    <!-- Сагс -->
+    <div id="cart-empty-msg" style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">
+      Сагс хоосон байна. Дээрээс бүтээгдэхүүн нэмнэ үү.
+    </div>
+
+    <table id="cart-table" style="display:none;width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:6px 8px;color:var(--text-muted);font-weight:600;font-size:12px">Бүтээгдэхүүн</th>
+          <th style="text-align:left;padding:6px 8px;color:var(--text-muted);font-weight:600;font-size:12px">Хэмжээ</th>
+          <th style="padding:6px 8px;color:var(--text-muted);font-weight:600;font-size:12px">Тоо</th>
+          <th style="padding:6px 8px;color:var(--text-muted);font-weight:600;font-size:12px">Нэгж</th>
+          <th style="text-align:right;padding:6px 8px;color:var(--text-muted);font-weight:600;font-size:12px">Үнэ</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="cart-tbody"></tbody>
+    </table>
+
+    <!-- Нийт + илгээх -->
+    <form action="/Wood-shop/process_order.php" method="POST" id="order-form">
+      <input type="hidden" name="cart_json" id="cart-json-input">
+      <div id="cart-total-row" style="display:none;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--border);margin-bottom:12px">
+        <span style="font-size:13px;color:var(--text-muted)">Нийт дүн</span>
+        <span style="font-size:20px;font-weight:700;color:var(--accent)" id="cart-total-price">₮0</span>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
         <label>Нэмэлт тэмдэглэл</label>
-        <textarea name="notes" rows="3" placeholder="Онцгой шаардлага, тайлбар..."></textarea>
+        <textarea name="notes" rows="2" placeholder="Хүргэлтийн хаяг, онцгой шаардлага..."></textarea>
       </div>
-
-      <button type="submit" class="btn-form">Захиалга илгээх &rarr;</button>
+      <button type="submit" class="btn-form" id="cart-submit-btn" style="display:none" onclick="return cartPrepareSubmit()">
+        Захиалга илгээх &rarr;
+      </button>
     </form>
   </div>
 </div>
