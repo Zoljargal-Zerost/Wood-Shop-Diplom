@@ -1,9 +1,7 @@
 -- ============================================================
 --  Модны Зах — Үндсэн Database
---  phpMyAdmin дээр шинэ database үүсгээд энийг Import хийнэ
 --  Database нэр: modni_zah
---  ⚠️  Ажиллуулах дараалал:
---  1. database.sql          ← ЭНЭ файл
+--  1. database.sql
 --  2. patch_director.sql
 --  3. patch_products_v2.sql
 --  4. patch_order_items.sql

@@ -301,43 +301,62 @@ var revealObserver = new IntersectionObserver(function (entries) {
 reveals.forEach(function (el) { revealObserver.observe(el); });
 
 
-/* ── 8. Chat widget ── */
+/* ── 8. Chat widget (AI) ── */
 function toggleChat() {
   var box = document.getElementById('chat-box');
   box.classList.toggle('open');
 }
 
-var chatBotReplies = [
-  'Тийм ээ, тантай удахгүй холбогдоно. Утас: 9446-9149 🌲',
-  'Захиалга хийхийн тулд Нэвтрэх товч дарна уу.',
-  'Манай дэлгүүрт Нарс, Хус, Хар мод болон бусад мод байдаг.',
-  'Хүргэлт боломжтой. Дэлгэрэнгүйг 9446-9149 дугаараас лавлана уу.',
-  'Ажлын цаг: Да–Ба 09:00–18:00, Бямба 10:00–16:00.',
-];
-var replyIndex = 0;
+var chatSending = false;
 
 function sendChat() {
   var input    = document.getElementById('chat-input');
   var messages = document.getElementById('chat-messages');
   var text     = input.value.trim();
-  if (!text) return;
+  if (!text || chatSending) return;
 
+  // Хэрэглэгчийн мессеж харуулах
   var userMsg = document.createElement('div');
   userMsg.className   = 'chat-msg user';
   userMsg.textContent = text;
   messages.appendChild(userMsg);
   input.value = '';
+  messages.scrollTop = messages.scrollHeight;
 
-  setTimeout(function () {
+  // "Бодож байна..." харуулах
+  var typing = document.createElement('div');
+  typing.className = 'chat-msg bot typing';
+  typing.textContent = '...';
+  messages.appendChild(typing);
+  messages.scrollTop = messages.scrollHeight;
+
+  chatSending = true;
+
+  // AI backend руу илгээх
+  var formData = new FormData();
+  formData.append('message', text);
+
+  fetch('/Wood-shop/ai_chat.php', { method: 'POST', body: formData })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    messages.removeChild(typing);
     var botMsg = document.createElement('div');
-    botMsg.className   = 'chat-msg bot';
-    botMsg.textContent = chatBotReplies[replyIndex % chatBotReplies.length];
-    replyIndex++;
+    botMsg.className = 'chat-msg bot';
+    botMsg.textContent = data.reply || 'Алдаа гарлаа. 9446-9149 руу залгана уу.';
     messages.appendChild(botMsg);
     messages.scrollTop = messages.scrollHeight;
-  }, 600);
-
-  messages.scrollTop = messages.scrollHeight;
+  })
+  .catch(function() {
+    messages.removeChild(typing);
+    var errMsg = document.createElement('div');
+    errMsg.className = 'chat-msg bot';
+    errMsg.textContent = 'Холболт тасарлаа. Дахин оролдоно уу.';
+    messages.appendChild(errMsg);
+    messages.scrollTop = messages.scrollHeight;
+  })
+  .finally(function() {
+    chatSending = false;
+  });
 }
 
 

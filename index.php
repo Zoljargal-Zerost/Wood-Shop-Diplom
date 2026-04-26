@@ -1,9 +1,6 @@
 <?php
 session_start();
-$user      = $_SESSION['user'] ?? null;
-$roleSlug  = $_SESSION['user_role']['slug'] ?? 'user';
-$isAdmin   = $user && in_array($roleSlug, ['admin','manager']);
-$isStaff   = $user && in_array($roleSlug, ['admin','manager','worker','driver','director']);
+$user = $_SESSION['user'] ?? null;
 
 // DB холболт
 try {
@@ -12,6 +9,31 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 } catch (PDOException $e) { $pdo = null; }
+
+// Role ачаалах (session-д байхгүй бол DB-с татах)
+if ($user && $pdo && !isset($_SESSION['user_role'])) {
+    $roleStmt = $pdo->prepare('SELECT r.* FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = ?');
+    $roleStmt->execute([$user['id']]);
+    $roleData = $roleStmt->fetch();
+    if ($roleData) {
+        $roleData['permissions'] = json_decode($roleData['permissions'], true) ?? [];
+        $_SESSION['user_role'] = $roleData;
+    }
+}
+
+$roleSlug  = $_SESSION['user_role']['slug'] ?? 'user';
+$isAdmin   = $user && in_array($roleSlug, ['admin','manager']);
+$isStaff   = $user && in_array($roleSlug, ['admin','manager','worker','driver','director']);
+
+// Role-д тохирсон dashboard URL
+$dashboardUrl = [
+    'admin'    => '/Wood-shop/dashboard/admin.php',
+    'manager'  => '/Wood-shop/dashboard/admin.php',
+    'director' => '/Wood-shop/dashboard/director.php',
+    'worker'   => '/Wood-shop/dashboard/worker.php',
+    'driver'   => '/Wood-shop/dashboard/driver.php',
+    'user'     => '/Wood-shop/dashboard/user.php',
+][$roleSlug] ?? '/Wood-shop/dashboard/user.php';
 
 // Бүтээгдэхүүн DB-с татах (admin нуугдсаныг ч харна)
 $products = [];
@@ -40,25 +62,14 @@ if ($user && $pdo) {
   <title>Модны Зах — Дархан</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=2">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 </head>
-<?php if (!empty($_SESSION['toast'])): 
-  $t = $_SESSION['toast'];
-  unset($_SESSION['toast']);
-?>
-<div id="toast-server-msg" 
-     data-msg="<?= htmlspecialchars($t['msg']) ?>"
-     data-type="<?= htmlspecialchars($t['type']) ?>"
-     data-icon="<?= htmlspecialchars($t['icon']) ?>"
-     style="display:none">
-</div>
-<?php endif; ?>
 <body>
 
 <?php if (!empty($_SESSION['toast'])): $t = $_SESSION['toast']; unset($_SESSION['toast']); ?>
-<div id="toast-server-msg" data-msg="<?= htmlspecialchars($t['msg']) ?>" data-type="<?= $t['type'] ?>" data-icon="<?= $t['icon'] ?>" style="display:none"></div>
+<div id="toast-server-msg" data-msg="<?= htmlspecialchars($t['msg']) ?>" data-type="<?= htmlspecialchars($t['type']) ?>" data-icon="<?= htmlspecialchars($t['icon']) ?>"></div>
 <?php endif; ?>
 
 <!-- ═══════════════════════════════════════════
@@ -83,32 +94,11 @@ if ($user && $pdo) {
 
     <div class="nav-actions">
       <?php if ($user): ?>
-        <?php if ($isStaff): ?>
-          <!-- Ажилтан/Admin — шууд dashboard руу -->
-          <a href="/Wood-shop/dashboard/" class="btn-user">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
-            <?= htmlspecialchars($user['ner']) ?>
-          </a>
-          <a href="/Wood-shop/auth.php?action=logout" class="btn-outline-sm">Гарах</a>
-        <?php else: ?>
-          <!-- Хэрэглэгч — dropdown (dashboard + chat) -->
-          <div class="user-dropdown" id="user-dropdown">
-            <button class="btn-user" onclick="toggleUserDropdown()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
-              <?= htmlspecialchars($user['ner']) ?>
-              <span style="font-size:10px;margin-left:2px">▾</span>
-            </button>
-            <div class="dropdown-menu" id="dropdown-menu">
-              <a href="/Wood-shop/dashboard/" class="dropdown-item">📊 Миний захиалгууд</a>
-              <a href="/Wood-shop/chat-user.php" class="dropdown-item">
-                💬 Ажилтантай чатлах
-                <span class="chat-unread-badge" id="chat-badge" style="display:none">0</span>
-              </a>
-              <div class="dropdown-divider"></div>
-              <a href="/Wood-shop/auth.php?action=logout" class="dropdown-item">🚪 Гарах</a>
-            </div>
-          </div>
-        <?php endif; ?>
+        <a href="<?= $dashboardUrl ?>" class="btn-user">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+          <?= htmlspecialchars($user['ner']) ?>
+        </a>
+        <a href="/Wood-shop/auth.php?action=logout" class="btn-outline-sm">Гарах</a>
       <?php else: ?>
         <button class="btn-outline-sm" onclick="openModal('login-modal')">Нэвтрэх</button>
         <button class="btn-primary-sm" onclick="openModal('register-modal')">Бүртгүүлэх</button>
@@ -324,7 +314,7 @@ if ($user && $pdo) {
     </div>
 
     <div class="map-placeholder">
-      <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d934.3944562774516!2d105.95397578142448!3d49.51168552140104!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e1!3m2!1sen!2smn!4v1775628281302!5m2!1sen!2smn" style="border:0;width:100%;height:260px;border-radius:16px;display:block;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d934.3944562774516!2d105.95397578142448!3d49.51168552140104!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e1!3m2!1sen!2smn!4v1775628281302!5m2!1sen!2smn" style="border:0;width:100%;height:100%;display:block;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
     </div>
   </div>
 </section>
@@ -477,6 +467,9 @@ if ($user && $pdo) {
         <input type="password" name="password" placeholder="••••••••" required>
       </div>
       <button type="submit" class="btn-form">Нэвтрэх</button>
+      <p class="form-switch" style="margin-bottom:4px">
+        <a href="#" onclick="switchModal('login-modal','forgot-modal')" style="font-size:13px;color:var(--accent)">Нууц үг мартсан уу?</a>
+      </p>
       <p class="form-switch">Бүртгэлгүй юу?
         <a href="#" onclick="switchModal('login-modal','register-modal')">Бүртгүүлэх</a>
       </p>
@@ -606,6 +599,80 @@ if ($user && $pdo) {
     <button class="btn-form" style="margin-top:16px" onclick="closeModal('terms-modal');document.getElementById('agree-terms').checked=true;">
       Зөвшөөрч хаах
     </button>
+  </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div class="modal-overlay" id="forgot-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('forgot-modal')">&times;</button>
+    <h2 class="modal-title">Нууц үг сэргээх</h2>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+      Бүртгэлтэй имэйл эсвэл утасны дугаараа оруулна уу. Баталгаажуулах код илгээх болно.
+    </p>
+    <form action="auth.php" method="POST" class="auth-form">
+      <input type="hidden" name="action" value="forgot_password">
+      <div class="form-group">
+        <label>Имэйл эсвэл утасны дугаар</label>
+        <input type="text" name="identifier" placeholder="example@email.com эсвэл 99112233" required>
+      </div>
+      <div class="form-group">
+        <label>Код авах арга</label>
+        <select name="otp_method">
+          <option value="email">📧 Имэйлээр</option>
+          <option value="sms">📱 SMS-ээр</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-form">Код илгээх →</button>
+      <p class="form-switch">
+        <a href="#" onclick="switchModal('forgot-modal','login-modal')">← Нэвтрэх хуудас руу буцах</a>
+      </p>
+    </form>
+  </div>
+</div>
+
+<!-- Reset Password Modal (OTP + шинэ нууц үг) -->
+<div class="modal-overlay <?= isset($_SESSION['reset_otp']) ? 'open' : '' ?>" id="reset-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('reset-modal')">&times;</button>
+    <h2 class="modal-title">Нууц үг шинэчлэх</h2>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+      <?php
+        $resetTarget = $_SESSION['reset_target'] ?? '';
+        $resetMethod = $_SESSION['reset_method'] ?? 'email';
+        if ($resetTarget) {
+            if ($resetMethod === 'email' && strpos($resetTarget, '@') !== false) {
+                [$ru, $rd] = explode('@', $resetTarget);
+                $resetMasked = substr($ru,0,2) . str_repeat('*', max(2,strlen($ru)-2)) . '@' . $rd;
+            } else {
+                $resetMasked = substr($resetTarget,0,4) . str_repeat('*', max(2,strlen($resetTarget)-6)) . substr($resetTarget,-2);
+            }
+            echo ($resetMethod === 'sms' ? '📱' : '📧') . ' Код илгээсэн: <strong>' . htmlspecialchars($resetMasked) . '</strong>';
+        } else {
+            echo 'Баталгаажуулах код болон шинэ нууц үгээ оруулна уу.';
+        }
+      ?>
+    </p>
+    <form action="auth.php" method="POST" class="auth-form">
+      <input type="hidden" name="action" value="reset_password">
+      <div class="form-group">
+        <label>6 оронтой код</label>
+        <input type="text" name="otp" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="123456" required>
+      </div>
+      <div class="form-group">
+        <label>Шинэ нууц үг</label>
+        <input type="password" name="new_password" minlength="8" placeholder="••••••••" required>
+        <small style="color:var(--text-muted);font-size:11px">8+ тэмдэгт, том үсэг, тоо агуулсан</small>
+      </div>
+      <div class="form-group">
+        <label>Нууц үг давтах</label>
+        <input type="password" name="new_password_confirm" minlength="8" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn-form">Нууц үг шинэчлэх</button>
+      <p class="form-switch">
+        <a href="#" onclick="switchModal('reset-modal','forgot-modal')">← Дахин код илгээх</a>
+      </p>
+    </form>
   </div>
 </div>
 
@@ -743,11 +810,11 @@ if ($user && $pdo) {
 <div class="chat-widget" id="chat-widget">
   <div class="chat-box" id="chat-box">
     <div class="chat-header">
-      <span>💬 Тусламж</span>
+      <span>🤖 AI Туслах</span>
       <button onclick="toggleChat()">&times;</button>
     </div>
     <div class="chat-messages" id="chat-messages">
-      <div class="chat-msg bot">Сайн байна уу! Та ямар мод сонирхож байна вэ? 🌲</div>
+      <div class="chat-msg bot">Сайн байна уу! Би Модны Захын AI туслах. Модны тооцоо, үнэ, зөвлөгөө асуугаарай 🌲</div>
     </div>
     <div class="chat-input-row">
       <input type="text" id="chat-input" placeholder="Мессеж бичих..." onkeydown="if(event.key==='Enter') sendChat()">
@@ -758,7 +825,7 @@ if ($user && $pdo) {
 </div>
 
 
-<script src="js/main.js"></script>
+<script src="js/main.js?v=2"></script>
 <script>
 // ── OTP Modal auto-open if pending ──
 <?php if (isset($_SESSION['otp_pending']) && $_SESSION['otp_pending']): ?>
@@ -766,6 +833,15 @@ document.addEventListener('DOMContentLoaded', function() {
   openModal('otp-modal');
 });
 <?php endif; ?>
+
+// ── Hash-based modal auto-open (forgot/reset) ──
+document.addEventListener('DOMContentLoaded', function() {
+  var hash = window.location.hash.replace('#', '');
+  if (hash && document.getElementById(hash)) {
+    openModal(hash);
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+});
 
 // ── OTP box keyboard navigation ──
 (function() {

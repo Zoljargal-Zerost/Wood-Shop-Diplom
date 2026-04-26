@@ -15,8 +15,9 @@ require_once __DIR__ . '/notify.php';   // Worker/Customer мэдэгдэл
 // require_once __DIR__ . '/db.php';
 // Тест DB: PDO жишээ
 try {
-    $pdo = new PDO('mysql:host=localhost;dbname=modni_zah;charset=utf8', 'root', '', [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    $pdo = new PDO('mysql:host=localhost;dbname=modni_zah;charset=utf8mb4', 'root', '', [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 } catch (PDOException $e) {
     die('DB холболтын алдаа: ' . $e->getMessage());
@@ -24,6 +25,11 @@ try {
 
 $action   = $_GET['action'] ?? $_POST['action'] ?? '';
 $redirect = $_POST['redirect'] ?? '/';
+
+// Open redirect хамгаалалт — зөвхөн дотоод URL-г зөвшөөрөх
+if (!str_starts_with($redirect, '/') || str_starts_with($redirect, '//')) {
+    $redirect = '/';
+}
 
 // ============================================================
 switch ($action) {
@@ -269,7 +275,7 @@ case 'forgot_password':
     }
 
     // Имэйл эсвэл утасаар хэрэглэгч хайх
-    $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ? OR phone = ? AND verified = 1');
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE (email = ? OR phone = ?) AND verified = 1');
     $stmt->execute([$identifier, $identifier]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 

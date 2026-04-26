@@ -102,6 +102,7 @@ include __DIR__ . '/layout.php';
   <button class="tab <?= $tab==='orders'?'active':'' ?>" onclick="location='worker.php?tab=orders'">📦 Захиалгууд</button>
   <button class="tab <?= $tab==='register'?'active':'' ?>" onclick="location='worker.php?tab=register'">➕ Хэрэглэгч бүртгэх</button>
   <button class="tab <?= $tab==='logs'?'active':'' ?>" onclick="location='worker.php?tab=logs'">📋 Миний бүртгэл</button>
+  <button class="tab <?= $tab==='reports'?'active':'' ?>" onclick="location='worker.php?tab=reports'">📈 Тайлан</button>
 </div>
 
 <?php if ($tab === 'dashboard'): ?>
@@ -216,6 +217,130 @@ $logs = $logs->fetchAll();
     </table>
   </div>
 </div>
+<?php elseif ($tab === 'reports'): ?>
+<?php
+// Огноо шүүлтүүр
+$dateFrom = $_GET['from'] ?? date('Y-m-01');
+$dateTo   = $_GET['to']   ?? date('Y-m-d');
+
+// Миний захиалгууд (огноогоор шүүх)
+$reportOrders = $pdo->prepare('
+    SELECT o.*, u.ner as user_ner, u.phone as user_phone
+    FROM orders o
+    JOIN users u ON o.user_id = u.id
+    WHERE o.worker_id = ? AND DATE(o.created_at) BETWEEN ? AND ?
+    ORDER BY o.created_at DESC
+');
+$reportOrders->execute([$uid, $dateFrom, $dateTo]);
+$reportOrders = $reportOrders->fetchAll();
+
+$totalRevenue = 0;
+$rDelivered = 0;
+$rPending = 0;
+foreach ($reportOrders as $o) {
+    $totalRevenue += (int)($o['total_price'] ?? 0);
+    if ($o['status'] === 'delivered') $rDelivered++;
+    if ($o['status'] === 'pending') $rPending++;
+}
+?>
+
+<!-- Огноо шүүлтүүр -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-body" style="padding:16px">
+    <form method="GET" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+      <input type="hidden" name="tab" value="reports">
+      <div class="form-group" style="gap:4px">
+        <label>Эхлэх огноо</label>
+        <input type="date" name="from" value="<?= htmlspecialchars($dateFrom) ?>">
+      </div>
+      <div class="form-group" style="gap:4px">
+        <label>Дуусах огноо</label>
+        <input type="date" name="to" value="<?= htmlspecialchars($dateTo) ?>">
+      </div>
+      <button type="submit" class="btn btn-primary">🔍 Шүүх</button>
+      <a href="worker.php?tab=reports&from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?>" class="btn btn-outline">Энэ сар</a>
+      <a href="worker.php?tab=reports&from=<?= date('Y-m-d', strtotime('-7 days')) ?>&to=<?= date('Y-m-d') ?>" class="btn btn-outline">7 хоног</a>
+    </form>
+  </div>
+</div>
+
+<!-- Товч статистик -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-icon">📦</div>
+    <div class="stat-num"><?= count($reportOrders) ?></div>
+    <div class="stat-lbl">Нийт захиалга</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">💰</div>
+    <div class="stat-num"><?= number_format($totalRevenue) ?>₮</div>
+    <div class="stat-lbl">Нийт дүн</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">✅</div>
+    <div class="stat-num"><?= $rDelivered ?></div>
+    <div class="stat-lbl">Хүргэгдсэн</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">⏳</div>
+    <div class="stat-num"><?= $rPending ?></div>
+    <div class="stat-lbl">Хүлээгдэж буй</div>
+  </div>
+</div>
+
+<!-- Захиалгын жагсаалт -->
+<div class="card">
+  <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+    <div class="card-title">📋 Миний захиалгууд (<?= htmlspecialchars($dateFrom) ?> → <?= htmlspecialchars($dateTo) ?>)</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-outline btn-sm" onclick="window.open('report_print.php?from=<?= htmlspecialchars($dateFrom) ?>&to=<?= htmlspecialchars($dateTo) ?>&worker_id=<?= $uid ?>','_blank')">🖨️ Хэвлэх</button>
+    </div>
+  </div>
+  <div class="card-body">
+    <?php if (empty($reportOrders)): ?>
+      <div style="text-align:center;padding:40px;color:var(--muted)">Энэ хугацаанд захиалга байхгүй байна.</div>
+    <?php else: ?>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Огноо</th>
+          <th>Хэрэглэгч</th>
+          <th>Утас</th>
+          <th>Бүтээгдэхүүн</th>
+          <th>Тоо/Хэмжээ</th>
+          <th>Дүн</th>
+          <th>Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+      <?php foreach ($reportOrders as $o):
+        $c = statusColor($o['status']);
+      ?>
+        <tr>
+          <td>#<?= $o['id'] ?></td>
+          <td><?= date('Y/m/d H:i', strtotime($o['created_at'])) ?></td>
+          <td><strong><?= htmlspecialchars($o['user_ner']) ?></strong></td>
+          <td><?= htmlspecialchars($o['user_phone']) ?></td>
+          <td><?= htmlspecialchars($o['product']) ?></td>
+          <td><?= $o['shirheg'] ?>ш · <?= $o['urt_m'] ?>м · <?= $o['urgun_cm'] ?>×<?= $o['zuzaan_cm'] ?>см</td>
+          <td style="font-weight:700;color:var(--accent)"><?= number_format($o['total_price'] ?? 0) ?>₮</td>
+          <td><span class="badge" style="background:<?= $c ?>22;color:<?= $c ?>"><?= statusLabel($o['status']) ?></span></td>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--bg-alt);font-weight:700">
+          <td colspan="6" style="text-align:right">Нийт дүн:</td>
+          <td style="color:var(--accent);font-size:16px"><?= number_format($totalRevenue) ?>₮</td>
+          <td><?= count($reportOrders) ?> захиалга</td>
+        </tr>
+      </tfoot>
+    </table>
+    <?php endif; ?>
+  </div>
+</div>
+
 <?php endif; ?>
 
 <!-- Status солих modal -->

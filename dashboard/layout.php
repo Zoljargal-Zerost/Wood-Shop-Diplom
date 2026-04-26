@@ -28,6 +28,7 @@ if (isRole('admin','manager','director')) {
             ['icon'=>'👥','label'=>'Хэрэглэгчид','href'=>'admin.php?tab=users','page'=>'users'],
             ['icon'=>'👷','label'=>'Ажилтнууд','href'=>'admin.php?tab=workers','page'=>'workers'],
             ['icon'=>'🚚','label'=>'Жолооч','href'=>'admin.php?tab=drivers','page'=>'drivers'],
+            ['icon'=>'📈','label'=>'Тайлан','href'=>'admin.php?tab=reports','page'=>'reports'],
             ['icon'=>'📋','label'=>'Бүртгэл','href'=>'admin.php?tab=logs','page'=>'logs'],
         ];
         if (isRole('admin','director')) {
@@ -40,6 +41,7 @@ if (isRole('admin','manager','director')) {
         ['icon'=>'📦','label'=>'Захиалгууд','href'=>'worker.php?tab=orders','page'=>'orders'],
         ['icon'=>'➕','label'=>'Хэрэглэгч бүртгэх','href'=>'worker.php?tab=register','page'=>'register'],
         ['icon'=>'📋','label'=>'Миний үйлдлүүд','href'=>'worker.php?tab=logs','page'=>'logs'],
+        ['icon'=>'📈','label'=>'Тайлан','href'=>'worker.php?tab=reports','page'=>'reports'],
     ];
 } elseif (isRole('driver')) {
     $menuItems = [

@@ -26,6 +26,15 @@ define('VONAGE_API_SECRET', 'fOJ4aZrNC6G8QRcM');  // ← your Vonage API secret
 define('VONAGE_FROM',       'Wood-Shop');         // ← sender name (max 11 chars, no spaces)
 
 // ------------------------------------------------------------
+//  GOOGLE GEMINI AI (Үнэгүй)
+//  API key авах: https://aistudio.google.com/apikey
+//  1. Google account-аар нэвтэрнэ
+//  2. "Create API Key" дарна
+//  3. Доорх хоосон хэсэгт paste хийнэ
+// ------------------------------------------------------------
+define('GEMINI_API_KEY', 'AIzaSyBWr78Sj8fveMXDKwOhe-yk_5ZyAmeOavE');  // ← Энд API key-гээ тавина
+
+// ------------------------------------------------------------
 //  OTP Settings
 // ------------------------------------------------------------
 define('OTP_EXPIRY_SECONDS', 300);   // 5 minutes

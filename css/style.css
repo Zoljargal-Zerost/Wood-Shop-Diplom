@@ -579,15 +579,11 @@ button { cursor: pointer; font-family: inherit; }
 .btn-location:hover { background: var(--accent); color: #fff; }
 
 .map-placeholder {
-  background: var(--accent-lt);
   border-radius: var(--radius-lg);
+  overflow: hidden;
+  height: 420px;
   border: 1px solid var(--border);
-  height: 350px; 
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
 }
 .map-placeholder span { font-size: 36px; }
 .map-placeholder p { color: var(--text-muted); font-size: 15px; }
@@ -909,7 +905,8 @@ button { cursor: pointer; font-family: inherit; }
 .chat-box {
   display: none;
   flex-direction: column;
-  width: 300px;
+  width: 320px;
+  max-height: 420px;
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
@@ -956,6 +953,8 @@ button { cursor: pointer; font-family: inherit; }
 }
 .chat-msg.bot  { background: var(--bg-alt); color: var(--text); align-self: flex-start; }
 .chat-msg.user { background: var(--accent); color: #fff; align-self: flex-end; }
+.chat-msg.typing { opacity: 0.6; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.3; } }
 
 .chat-input-row {
   display: flex;
@@ -1061,6 +1060,7 @@ button { cursor: pointer; font-family: inherit; }
   .contact-grid    { grid-template-columns: 1fr 1fr; }
   .footer-grid     { grid-template-columns: 1fr 1fr; }
   .form-row        { grid-template-columns: 1fr; }
+  .map-placeholder { height: 320px; }
 }
 
 @media (max-width: 700px) {
